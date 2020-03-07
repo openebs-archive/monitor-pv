@@ -1,0 +1,34 @@
+dist: xenial
+
+language: minimal
+
+services:
+  - docker
+
+jobs:
+  include:
+    - os: linux
+      arch: amd64
+      env:
+        - DIMAGE="openebs/monitor-pv"
+        - TRIVYARCH="64bit"
+    - os: linux
+      arch: arm64
+      env:
+        - DIMAGE="openebs/monitor-pv-arm64"
+        - TRIVYARCH="ARM64"
+
+before_install:
+  - export VERSION=$(curl --silent "https://api.github.com/repos/aquasecurity/trivy/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+  - echo ${VERSION} 
+  - wget https://github.com/aquasecurity/trivy/releases/download/v${VERSION}/trivy_${VERSION}_Linux-${TRIVYARCH}.tar.gz
+  - tar zxvf trivy_${VERSION}_Linux-${TRIVYARCH}.tar.gz
+
+script:
+  - make image
+  - make test
+  - ./trivy --exit-code 0 --severity HIGH --no-progress ${DIMAGE}:ci
+  - ./trivy --exit-code 1 --severity CRITICAL --no-progress ${DIMAGE}:ci
+
+after_success:
+  - make push
