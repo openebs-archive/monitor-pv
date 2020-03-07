@@ -1,2 +1,2 @@
 # monitor-pv
-custom stats collector for OpenEBS persistent volumes
+custom stats collector for OpenEBS persistent volumes (jiva, localpv)
