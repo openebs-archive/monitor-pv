@@ -1,11 +1,14 @@
 # monitor-pv will be launch as daemonset.
 # choose appropriate namespace and serviceaccount. defaults to ns: openebs, sa: openebs-maya-operator
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: monitor-pv
   namespace: openebs
 spec:
+  selector:
+    matchLabels:
+      app: monitor-pv
   template:
     metadata:
       labels:
