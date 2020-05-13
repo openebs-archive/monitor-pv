@@ -6,17 +6,21 @@ INTERVAL=${COLLECT_INTERVAL:=10}
 ## calculate_pv_capacity obtains the size of a PV in bytes
 function calculate_pv_capacity(){
 
-  unit=$(echo "${size_in_spec: -1}")
+  if [[ ${size_in_spec} =~ "i" ]]; then
+    unit=$(echo "${size_in_spec: -2}")
+  else
+    unit=$(echo "${size_in_spec: -1}")
+  fi  
 
   case "${unit}" in 
   
-  g|gi) echo $((1024*1024*1024*$(echo $1 | cut -d "${unit}" -f 1)))
+  g|gi) echo $((1024*1024*1024*$(echo $1 | tr -d ${unit})))
      ;;
-  m|mi) echo $((1024*1024*$(echo $1 | cut -d "${unit}" -f 1)))
+  m|mi) echo $((1024*1024*$(echo $1 | tr -d ${unit})))
      ;;
-  k|ki) echo $((1024*$(echo $1 | cut -d "${unit}" -f 1)))
+  k|ki) echo $((1024*$(echo $1 | tr -d ${unit})))
      ;;
-  b|bi) echo $1 | cut -d "${unit}" -f 1
+  b|bi) echo $1 | tr -d ${unit}
      ;;
   *) echo 0
      ;;
@@ -51,7 +55,7 @@ function collect_pv_utilization_metrics(){
 
   for i in ${pv_list[@]}
   do
-    pv_mount_list+=($(df -h | grep ${i} | awk '{print $NF}'))
+    pv_mount_list+=($(findmnt --df | grep ${i} | grep '/var/lib/kubelet/pods' | head -1 | awk '{print $NF}'))
   done
 
   echo "mount list: ${pv_mount_list[@]}"
