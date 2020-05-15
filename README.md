@@ -5,7 +5,7 @@ custom stats collector for OpenEBS persistent volumes (jiva, localpv)
 - openebs (https://docs.openebs.io/)
 
 ### How to use
-- Run `kubectl apply -f node-exporter.yaml`
+- Run `kubectl apply -f node-exporter-pv-metrics.yaml`
 - Verify if the pods are up and running.
 <pre>
 $ kubectl get pods -n openebs 
