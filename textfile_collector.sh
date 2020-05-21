@@ -37,9 +37,10 @@ function collect_pv_capacity_metrics(){
 
   for i in ${pv_list[@]}
   do
+    pvc_name=$(kubectl get pv ${i} -o custom-columns=:spec.claimRef.name --no-headers | tr '[:upper:]' '[:lower:]')
     size_in_spec=$(kubectl get pv ${i} -o custom-columns=:spec.capacity.storage --no-headers | tr '[:upper:]' '[:lower:]')
     size_in_bytes=$(calculate_pv_capacity ${size_in_spec};)
-    echo "pv_capacity_bytes{persistentvolume=\"${i}\"} ${size_in_bytes}" >> ${FILEPATH}/pv_size.prom
+    echo "pv_capacity_bytes{persistentvolume=\"${i}\",persistentvolumeclaim=\"${pvc_name}\"} ${size_in_bytes}" >> ${FILEPATH}/pv_size.prom
   done
 }
 
@@ -65,7 +66,8 @@ function collect_pv_utilization_metrics(){
     mount_data=$(du -sb ${i})
     utilization=$(echo ${mount_data}| cut -d " " -f 1)
     pv_name=$(basename $(echo ${mount_data} | cut -d " " -f 2))
-    echo "pv_utilization_bytes{persistentvolume=\"${pv_name}\"} ${utilization}" >> ${FILEPATH}/pv_used.prom
+    pvc_name=$(kubectl get pv ${pv_name} -o custom-columns=:spec.claimRef.name --no-headers | tr '[:upper:]' '[:lower:]')
+    echo "pv_utilization_bytes{persistentvolume=\"${pv_name}\",persistentvolumeclaim=\"${pvc_name}\"} ${utilization}" >> ${FILEPATH}/pv_used.prom
   done
 }
 
