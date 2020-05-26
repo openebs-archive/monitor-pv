@@ -65,6 +65,8 @@ spec:
             value: /shared_vol
           - name: COLLECT_INTERVAL 
             value: "10"
+          - name: PROVISIONER_WHITELIST
+            value: "openebs.io/provisioner-iscsi,openebs.io/local"
         command:
         - /bin/bash
         args:

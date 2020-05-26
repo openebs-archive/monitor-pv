@@ -2,6 +2,7 @@
 
 FILEPATH=${TEXTFILE_PATH:=/shared_vol}
 INTERVAL=${COLLECT_INTERVAL:=10}
+PROVISIONERS=${PROVISIONER_WHITELIST:=openebs.io/local}
 
 ## calculate_pv_capacity obtains the size of a PV in bytes
 function calculate_pv_capacity(){
@@ -73,16 +74,27 @@ function collect_pv_utilization_metrics(){
 
 while true
 do
+  provisioner_list=$(echo ${PROVISIONERS} | tr ',' ' ')
   declare -a pv_list=()
 
   ## Select only those PVs that are bound. Several stale PVs can exist.
   for i in $(kubectl get pv -o jsonpath='{.items[?(@.status.phase=="Bound")].metadata.name}')
   do
-    pv_list+=(${i})
+    ## Select only those PVs that are provisioned by the whitelisted provisioners
+    ## Nested conditions in jsonpath filters are not supported yet. Ref: https://github.com/kubernetes/kubernetes/issues/20352
+    if [[ ${provisioner_list} =~ $(kubectl get pv ${i} -o jsonpath='{.metadata.annotations.pv\.kubernetes\.io/provisioned-by}') ]]
+    then      
+      pv_list+=(${i})
+    fi
   done
 
-  echo "pv_list: ${pv_list[@]}"
-  collect_pv_capacity_metrics;
-  collect_pv_utilization_metrics;
+  echo "No. of PVs by specified provisioners: ${#pv_list[@]}"
+
+  if [[ ${#pv_list[@]} -ne 0 ]]; then
+    echo "PV List: ${pv_list[@]}"
+    collect_pv_capacity_metrics;
+    collect_pv_utilization_metrics;
+  fi
+
   sleep ${INTERVAL}
 done
