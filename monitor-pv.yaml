@@ -1,0 +1,114 @@
+# monitor-pv will launch as a daemonset.
+# Make sure to update namespace on ClusterRoleBinding below.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openebs-monitor-pv
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openebs-monitor-pv
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  verbs:
+  - list
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openebs-monitor-pv
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openebs-monitor-pv
+subjects:
+- kind: ServiceAccount
+  name: openebs-monitor-pv
+  namespace: openebs # NOTE: Update namespace here if deploying to a different namespace
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: openebs-monitor-pv
+spec:
+  selector:
+    matchLabels:
+      app: openebs-monitor-pv
+  template:
+    metadata:
+      labels:
+        app: openebs-monitor-pv
+      annotations:
+        prometheus.io/path: /scrape.txt
+        prometheus.io/port: "80"
+        prometheus.io/scrape: "true"
+      name: openebs-monitor-pv
+    spec:
+      serviceAccount: openebs-monitor-pv
+      containers:
+        - name: monitor-pv
+          image: openebs/monitor-pv:ci
+          imagePullPolicy: Always
+          env:
+            - name: TEXTFILE_PATH
+              value: /shared_vol/scrape.txt
+            - name: COLLECT_INTERVAL 
+              value: "10"
+            - name: PROVISIONER_WHITELIST
+              value: "openebs.io/provisioner-iscsi,openebs.io/local"
+          command:
+            - /bin/bash
+          args:
+            - -c
+            - ./textfile_collector.sh
+          resources:
+            requests:
+              memory: "40M"
+              cpu: "200m"
+            limits:
+              memory: "100M"
+              cpu: "200m"
+          volumeMounts:
+            - mountPath: /host/proc
+              name: proc
+            - mountPath: /host/sys
+              name: sys
+            - mountPath: /host/root
+              mountPropagation: HostToContainer
+              name: root
+              readOnly: true
+            - mountPath: /shared_vol
+              name: shared
+        - image: nginx:alpine
+          name: nginx
+          ports:
+            - containerPort: 80
+              name: scrape
+          resources:
+            requests:
+              memory: "60M"
+              cpu: "1m"
+            limits:
+              memory: "100M"
+              cpu: "10m"
+      ## Uncomment this to also run on control-plane nodes
+      #tolerations:
+      #  - effect: NoSchedule
+      #    operator: Exists
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
+        - name: shared
+          emptyDir: {}
