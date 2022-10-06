@@ -4,36 +4,13 @@ FILEPATH=${TEXTFILE_PATH:=/shared_vol/scrape.txt}
 INTERVAL=${COLLECT_INTERVAL:=10}
 PROVISIONERS=${PROVISIONER_WHITELIST:=openebs.io/local}
 
-## calculate_pv_capacity obtains the size of a PV in bytes
-function calculate_pv_capacity(){
-  if [[ ${size_in_spec} =~ "i" ]]; then
-    unit=$(echo "${size_in_spec: -2}")
-  else
-    unit=$(echo "${size_in_spec: -1}")
-  fi
-
-  case "${unit}" in
-
-  g|gi) echo $((1024*1024*1024*$(echo $1 | tr -d ${unit})))
-     ;;
-  m|mi) echo $((1024*1024*$(echo $1 | tr -d ${unit})))
-     ;;
-  k|ki) echo $((1024*$(echo $1 | tr -d ${unit})))
-     ;;
-  b|bi) echo $1 | tr -d ${unit}
-     ;;
-  *) echo 0
-     ;;
-  esac
-}
-
 ## collect_pv_capacity_metrics collects the PV capacity metrics
 function collect_pv_capacity_metrics(){
   for i in ${pv_list[@]}
   do
     pvc_name=$(kubectl get pv ${i} -o custom-columns=:spec.claimRef.name --no-headers | tr '[:upper:]' '[:lower:]')
     size_in_spec=$(kubectl get pv ${i} -o custom-columns=:spec.capacity.storage --no-headers | tr '[:upper:]' '[:lower:]')
-    size_in_bytes=$(calculate_pv_capacity ${size_in_spec};)
+    size_in_bytes=$(numfmt --from=auto --to=none ${size_in_spec};)
     echo "pv_capacity_bytes{persistentvolume=\"${i}\",persistentvolumeclaim=\"${pvc_name}\"} ${size_in_bytes}"
   done
 }
